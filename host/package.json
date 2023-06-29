@@ -1,0 +1,12 @@
+{
+  "name": "host",
+  "version": "1.0.0",
+  "description": "WebAssembly hosting service",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Bartosz Sypytkowski",
+  "license": "MIT"
+}
