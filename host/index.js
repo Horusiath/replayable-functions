@@ -16,18 +16,16 @@ function run(context, importObject) {
     let start = performance.now()
     let result = run_script()
     let end = performance.now()
-    console.log('finished script in', end-start, 'ms with result:', result)
+    console.log('finished script in', end-start, 'ms with result:', new Date(result))
 }
 
 function imports() {
     return  {
+        // Since our Rust script didn't defined extern module name, it will default to "env"
         env: {
-            now: () => {
-                return new Date().getTime()
-            },
-            sleep: (ms) => {
-                Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0 ,0, Number(ms));
-            },
+            now: () => new Date().getTime(),
+            // sleep activelly blocks current thread before returning
+            sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0 ,0, Number(ms))
         }
     }
 }
