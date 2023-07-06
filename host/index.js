@@ -3,38 +3,35 @@ import { CapturingContext } from './capture.js'
 
 const bin = fs.readFileSync('../wasm-script/target/wasm32-unknown-unknown/release/wasm_script.wasm')
 
-// create a new WASM sandbox and run it using given capturing context
-function run(context, importObject) {
-    context.intercept(importObject.env, ['now', 'sleep'])
+const identity = (args) => args
 
-    const module = new WebAssembly.Module(bin)
-    const memory = new WebAssembly.Memory({initial: 2}) // size in pages
-    importObject.imports = { memory }
-    const instance = new WebAssembly.Instance(module, importObject)
-    const { run_script } = instance.exports
-
-    let start = performance.now()
-    let result = run_script()
-    let end = performance.now()
-    console.log('finished script in', end-start, 'ms with result:', new Date(result))
+const env = {
+    read: () => JSON.stringify(new Date().toISOString()),
+    write: (json) => console.log(JSON.parse(json)),
+    // sleep actively blocks current thread before returning
+    sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0 ,0, Number(ms)),
 }
 
-function imports() {
-    return  {
-        // Since our Rust script didn't defined extern module name, it will default to "env"
-        env: {
-            now: () => new Date().getTime(),
-            // sleep activelly blocks current thread before returning
-            sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0 ,0, Number(ms))
-        }
-    }
+// create a new WASM sandbox and run it using given capturing context
+function run(context) {
+    const module = new WebAssembly.Module(bin)
+    const memory = new WebAssembly.Memory({initial: 2}) // size in pages
+    context.memory = memory
+    const importObject = context.imports(env)
+    const instance = new WebAssembly.Instance(module, importObject)
+    const { echo } = instance.exports
+
+    let start = performance.now()
+    let result = echo()
+    let end = performance.now()
+    console.log('finished script in', end-start, 'ms with result:', new Date(result))
 }
 
 // intercept functions to be imported into WASM module, so that we can record and replay their results
 const context = new CapturingContext()
 
 // run first time and record function calls
-run(context, imports())
+run(context)
 
 /// run again - this time use function calls from previous run
 const snapshot = context.snapshot()
