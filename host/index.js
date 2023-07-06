@@ -7,7 +7,7 @@ const identity = (args) => args
 
 const env = {
     read: () => JSON.stringify(new Date().toISOString()),
-    write: (json) => console.log(JSON.parse(json)),
+    write: (json) => console.log(json),
     // sleep actively blocks current thread before returning
     sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0 ,0, Number(ms)),
 }
@@ -15,16 +15,15 @@ const env = {
 // create a new WASM sandbox and run it using given capturing context
 function run(context) {
     const module = new WebAssembly.Module(bin)
-    const memory = new WebAssembly.Memory({initial: 2}) // size in pages
-    context.memory = memory
     const importObject = context.imports(env)
     const instance = new WebAssembly.Instance(module, importObject)
+    context.memory = instance.exports.memory
     const { echo } = instance.exports
 
     let start = performance.now()
-    let result = echo()
+    echo()
     let end = performance.now()
-    console.log('finished script in', end-start, 'ms with result:', new Date(result))
+    console.log('finished script in', end-start, 'ms')
 }
 
 // intercept functions to be imported into WASM module, so that we can record and replay their results
@@ -39,4 +38,4 @@ console.log(snapshot)
 
 const context2 = new CapturingContext()
 context2.replay(snapshot)
-run(context2, imports())
+run(context2)

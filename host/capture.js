@@ -26,28 +26,36 @@ export class CapturingContext {
     }
 
     imports(env) {
-        let bytes = new Uint8Array([])
+        let buf = null
+        let readIdx = 0
+        const read = this.capture('read', env.read)
+        const write = env.write
+        //const write = this.capture('write', env.write)
+        const sleep = this.capture('sleep', env.sleep)
         return {
-            imports: { memory: this.memory },
             env: {
                 read: (ptr, len) => {
-                    if (bytes.byteLength === 0) {
+                    if (buf === null || readIdx === buf.byteLength) {
+                        // there's no previous message, read new one
+                        const json = read()
                         const encoder = new TextEncoder()
-                        const json = this.capture('read', env.read())
-                        bytes = encoder.encode(json)
+                        buf = encoder.encode(json)
+                        readIdx = 0
                     }
-                    let written = (bytes.byteLength > len) ? len : bytes.byteLength
-                    bytes = bytes.slice(0, written)
-                    const view = new Uint8Array(this.memory.buffer, ptr, written)
-                    view.set(bytes)
+                    let n = Math.min(len, buf.byteLength - readIdx)
+                    const slice = buf.slice(readIdx, readIdx + n)
+                    readIdx += n
+                    const view = new Uint8Array(this.memory.buffer, ptr, n)
+                    view.set(slice)
+                    return n
                 },
                 write: (ptr, len) => {
                     const view = new Uint8Array(this.memory.buffer, ptr, len)
                     const decoder = new TextDecoder(('utf-8'))
                     const json = decoder.decode(view)
-                    this.capture('write', env.write(json))
+                    write(json)
                 },
-                sleep: this.capture('sleep', env.sleep),
+                sleep,
             }
         }
     }

@@ -14,7 +14,7 @@ fn send(data: &str) {
     unsafe { write(ptr, data.len() as u32) }
 }
 
-const BUF_LEN: usize = 32;
+const BUF_LEN: usize = 16;
 static mut BUF: [u8; BUF_LEN] = [0u8; BUF_LEN];
 
 fn receive() -> String {
