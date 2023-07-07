@@ -6,6 +6,16 @@ export class CapturingContext {
         this.memory = null
     }
 
+    snapshot() {
+        return JSON.stringify(this.calls)
+    }
+
+    replay(snapshot) {
+        this.calls = JSON.parse(snapshot)
+        this.callPointers = {}
+        this.isCapturing = false
+    }
+
     capture(name, fn) {
         return ((...args) => {
             const ctx = this.calls[name] || []
@@ -26,12 +36,13 @@ export class CapturingContext {
     }
 
     imports(env) {
-        let buf = null
-        let readIdx = 0
         const read = this.capture('read', env.read)
         const write = env.write
         //const write = this.capture('write', env.write)
         const sleep = this.capture('sleep', env.sleep)
+        
+        let buf = null
+        let readIdx = 0
         return {
             env: {
                 read: (ptr, len) => {
@@ -58,15 +69,5 @@ export class CapturingContext {
                 sleep,
             }
         }
-    }
-
-    snapshot() {
-        return JSON.stringify(this.calls)
-    }
-
-    replay(snapshot) {
-        this.calls = JSON.parse(snapshot)
-        this.callPointers = {}
-        this.isCapturing = false
     }
 }
